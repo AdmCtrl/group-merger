@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("application")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "com.admctrl"
@@ -10,13 +11,10 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-}
-
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 application {
@@ -24,8 +22,31 @@ application {
 }
 
 tasks.jar {
+    enabled = false
+}
+
+tasks.shadowJar {
+    archiveBaseName.set("groupmerger")
+    archiveVersion.set("1.0")
+    archiveClassifier.set("")
+
     manifest {
-        attributes["Main-Class"] = "com.admctrl.Main"
+        attributes("Main-Class" to "com.admctrl.Main")
     }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.assemble {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.distZip {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.distTar {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.startScripts {
+    dependsOn(tasks.shadowJar)
 }
