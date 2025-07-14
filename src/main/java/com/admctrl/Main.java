@@ -41,7 +41,6 @@ public class Main {
                             if (token.length() >= 2 && token.startsWith("\"") && token.endsWith("\"")) {
                                 token = token.substring(1, token.length() - 1);
                             }
-
                             //дедупликация токенов через пул, но только для непустых значений
                             if (!token.isEmpty()) {
                                 String uniqueToken = tokenPool.get(token);
@@ -183,27 +182,35 @@ public class Main {
     }
 
     //валидация строки
-    private static boolean validateLine(String line) {
-        int state = 0;                           //0: ожидаем открывающуюся кавыку, 1: внутри кавычек, 2: после закрытой кавычки
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            switch (state) {
-                case 0:                           //должна быть открывающая кавычка
-                    if (c != '"') return false;
-                    state = 1;
-                    break;
-                case 1:                           //внутри кавычек
-                    if (c == '"') state = 2;
-                    break;
-                case 2:                           //после закрытой кавычки
-                    if (c == ';')
-                        state = 0;                //после ; должна быть новая кавычка
-                    else return false;            //любой символ кроме ; недопустим
-                    break;
-            }
+private static boolean validateLine(String line) {
+    int state = 0;                              //0: ожидаем начало токена (или пустую ячейку), 1: внутри кавычек, 2: после закрытой кавычки
+    for (int i = 0; i < line.length(); i++) {
+        char c = line.charAt(i);
+        switch (state) {
+            case 0:
+                if (c == '"')
+                    state = 1;                  //началось значение в кавычках
+                else if (c == ';')
+                    state = 0;                  //пустая ячейка
+                else
+                    return false;               //некорректный символ вне кавычек
+                break;
+            case 1:
+                if (c == '"')
+                    state = 2;                  //закрыли кавычку
+                break;                          //иначе остаёмся внутри кавычек
+            case 2:
+                if (c == ';')
+                    state = 0;                  //следующий токен
+                else
+                    return false;               //после закрытия кавычки должен быть `;` или конец строки
+                break;
         }
-        return state == 2;                        //должны закончить в состоянии после кавычки
     }
+                                                //строка должна завершиться либо после закрытой кавычки, либо на пустом токене
+    return state == 2 || state == 0;            //если исключим нулевое состояние, тогда избавимся от обработки пустых строк,
+                                                //что даст значительную прибавку в производительности
+}
 
     //класс для реализации алгоритма Disjoint Set Union (DSU) с оптимизациями сжатия путей и объединения по рангу.
     static class UnionFind {
@@ -219,13 +226,19 @@ public class Main {
             }
         }
 
-        //операция Find с сжатием путей
+        //операция Find с сжатием путей итеративный вариант (рекурсию сенил на while)
         public int find(int i) {
-            if (parent[i] == i) {
-                return i;
+            int root = i;
+            while (parent[root] != root) {
+                root = parent[root];
             }
-            //сжатие путей: устанавливаем родителя каждого узла на пути к корню
-            return parent[i] = find(parent[i]);
+            // Сжатие путей
+            while (i != root) {
+                int next = parent[i];
+                parent[i] = root;
+                i = next;
+            }
+            return root;
         }
 
         //операция Union с объединением по рангу
