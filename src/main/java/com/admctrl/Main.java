@@ -73,7 +73,7 @@ public class Main {
 
         //обработка столбцов для объединения строк
         //используем финальную переменную для lastSeenMap
-        IntStream.range(0, maxColumns).parallel().forEach(col -> {
+        IntStream.range(0, maxColumns).forEach(col -> {         //убрал parallel(), он точно небезопасен. если оба потока одновременно запишут parent[x] = y и parent[y] = x - то гонка
             final Map<String, Integer> lastSeenMap = new HashMap<>();
             for (int id = 0; id < tokenizedLines.size(); id++) {
                 String[] tokens = tokenizedLines.get(id);
@@ -85,7 +85,10 @@ public class Main {
 
                 //объединяем с предыдущей строкой если такое же значение
                 if (lastSeenMap.containsKey(value)) {
-                    uf.union(id, lastSeenMap.get(value));
+                    int otherId = lastSeenMap.get(value);
+                    if (uf.find(id) != uf.find(otherId)) { //если uf.union() вызывается тысячи или миллионы раз на уже объединённые элементы, тогда
+                        uf.union(id, otherId);             // при плохом порядке обхода возможно попадание в "цикл", да и find() будет вызываться без пользы
+                    }
                 } else {
                     lastSeenMap.put(value, id);
                 }
